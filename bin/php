@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -u
+
+PhpVersion="7.2"
+ImageName=php:$PhpVersion-cli
+
+if [ 0 -lt $# ]; then
+  docker run -p 8000:8000 -it --rm -u=$(id -u):$(id -g) -v $(pwd):/home -w /home $ImageName php $*
+else
+  echo this php is docker image...
+fi

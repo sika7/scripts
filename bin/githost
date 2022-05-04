@@ -1,0 +1,154 @@
+#!/bin/bash
+
+set -u
+
+#==================================
+# config
+#==================================
+
+PROGNAME=$(basename $0)
+VERSION="1.0"
+
+# 設定ファイルに以下のように書き込んでください
+# 接続先のサーバー
+server=conoha
+# repositoryを設置するディレクトリ
+secretDir=git/git_host
+# secretDir=git/test
+
+
+#==================================
+# functions
+#==================================
+
+# メイン処理
+main(){
+  if [ "${FLAG}" == "list" ]; then
+    ls_dir
+    exit 0
+  fi
+  if [ "${FLAG}" == "remove" -a ${#VAR[@]} -gt 0 ]; then
+    loop_command VAR 'rm_git'
+    exit 0
+  fi
+  if [ "${FLAG}" == "add" -a ${#VAR[@]} -gt 0 ]; then
+    loop_command VAR 'repository_add'
+    exit 0
+  fi
+
+  help
+  exit 1
+}
+
+loop_command(){
+  declare -n LOOPARRAY=${1}
+  COMMAND=${2}
+  for ((i=0; i < ${#LOOPARRAY[@]}; i++))
+  do
+    $COMMAND "${LOOPARRAY[i]}"
+  done
+}
+
+#サーバー側のディレクトリを見る
+ls_dir(){
+  # echo "${1:-$secretDir}ディレクトリ"
+  # echo "----------------------------"
+  ssh $server command "cd ${1:-$secretDir};ls"
+}
+
+# サーバーにあるRepositoryを削除
+rm_git(){
+  if [ $(ssh $server "[ -d ~/${secretDir}/${1}.git ];echo \$?") -eq 0 ]; then
+    ssh $server command "
+    cd ~/${secretDir}/;
+    rm -rf ${1}.git;"
+    echo "${1}.git: Deletion complete"
+  else
+    echo "${1}.git: No such repository"
+  fi
+}
+
+
+# サーバーにRepositoryを追加
+repository_add(){
+  if [ $(ssh $server "[ -d ~/${secretDir}/${1}.git ];echo \$?") -eq 0 ]; then
+    echo "${1}: Repository already exists"
+  else
+    ssh $server command "
+    mkdir ~/${secretDir}/${1}.git;
+    cd ~/${secretDir}/${1}.git;
+    git init --bare --shared;"
+  fi
+}
+
+# ci
+ci_conf() {
+  cat <<'_EOF_' > post-update 
+#!/bin/bash
+if [ $1 = "refs/heads/master" ]; then
+  echo "update master branch"
+fi
+_EOF_
+spc ./post-update $server:~/${secretDir}/${1}
+
+}
+
+help(){
+  echo "リポジトリの操作を行うシェルスクリプトです。"
+  echo "url : ssh://${server}/~/${secretDir}/"
+  echo
+  echo "Usage: $PROGNAME FILE.. [OPTION]"
+  echo "Options:"
+  echo "  -h, --help"
+  echo "  -v, --version"
+  echo "  -l, --list"
+  echo "  -a, --add [repository name]"
+  echo "  -r, --remove [repository name]"
+  echo
+}
+
+#==================================
+# 判定・処理
+#==================================
+
+OPTION=$@
+# declare -a OPTIONS=()
+FLAG='VAR'
+for OPT in $OPTION
+do
+  case "$OPT" in
+    '-h' | '--help' )
+      help
+      exit 0
+      ;;
+    '-v' | '--version' )
+      echo $VERSION
+      exit 0
+      ;;
+    '-l' | '--list' )
+      FLAG='list'
+      # OPTIONS+=("list")
+      ;;
+    '-a' | '--add' )
+      FLAG='add'
+      # OPTIONS+=("setup")
+      eval declare -a ${FLAG}=\(\)
+      ;;
+    '-r' | '--remove' )
+      FLAG='remove'
+      # OPTIONS+=('remove')
+      eval declare -a ${FLAG}=\(\)
+      ;;
+    '-*' | '--*' )
+      help
+      exit 1
+      ;;
+  esac
+  if [[ ! $OPT =~ ^- ]]; then
+   eval ${FLAG}+=\(\"$OPT\"\)
+   shift
+  fi
+done
+
+main
+

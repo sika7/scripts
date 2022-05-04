@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -u
+
+if [ 0 -lt $# ]; then
+  docker run -it --rm -u=$(id -u):$(id -g) -v $(pwd):/app -w /app composer $*
+else
+  echo this composer is docker image...
+fi
