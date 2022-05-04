@@ -1,5 +1,12 @@
 # wordpressを簡単にサーバーに設置するシェルスクリプト
 
+## install
+
+```bash
+cd ~/bin/
+curl -sLO "https://raw.githubusercontent.com/sika7/scripts/main/bin/wp"
+```
+
 ## 作動環境
 
 * ssh接続

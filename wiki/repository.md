@@ -1,5 +1,12 @@
 # ベアリポジトリをサーバーに簡単に作成するシェルスクリプト
 
+## install
+
+```bash
+cd ~/bin/
+curl -sLO "https://raw.githubusercontent.com/sika7/scripts/main/bin/repository"
+```
+
 ## 作動環境
 
 * ssh接続
