@@ -1,0 +1,88 @@
+#!/bin/sh
+
+
+
+# 設定ファイルに以下のように書き込んでください
+# 接続先のサーバー情報
+# server=hoge
+#
+# repositoryを設置するディレクトリ
+# secretDir=hoge
+
+
+# 設定ファイルの読み込み
+. ~/.tools/setting/repository_conf
+
+
+
+#==================================
+# functions
+#==================================
+
+#サーバー側のディレクトリを見る
+ls_dir(){
+  echo "${1:-$secretDir}ディレクトリ"
+  echo "----------------------------"
+  ssh $server command "cd ${1:-$secretDir};ls"
+  echo "----------------------------"
+}
+
+
+
+# サーバーにあるRepositoryを削除
+rm_git(){
+  ssh $server command "
+  cd ~/${secretDir}/;
+  rm -rf $1"
+  echo "${1}を削除しました。"
+}
+
+
+# サーバーにRepositoryを追加
+repository_setup(){
+  ssh $server command "
+  cd ~/${secretDir};
+  mkdir ${1};
+  cd ${1};
+  git init --bare --shared;"
+
+  echo "${1}を設置しました。
+  url : ssh://lolipop/~/${secretDir}/${1}/"
+
+}
+
+
+
+help(){
+  echo "
+  リポジトリの操作を行うシェルスクリプトです。
+
+  ［メニュー］
+  表示             ls
+  サーバーに追加   setup
+  サーバーから削除 remove
+
+  "
+}
+
+#==================================
+# 判定・処理
+#==================================
+case "$1" in
+  "ls")
+    ls_dir
+    ;;
+  "setup")
+    ls_dir
+    read -p "Please setup repository name: " fileName
+    repository_setup $fileName
+    ;;
+  "remove")
+    ls_dir
+    read -p "Please delete repository neme : " template
+    rm_git $template
+    ;;
+  *)
+    help
+esac
+
