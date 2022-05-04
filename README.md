@@ -3,6 +3,7 @@
 * [repository](/wiki/repository.md)
 * [site](/wiki/site.md)
 * [wp](/wiki/wp.md)
+* [dotfiles](/wiki/dotfiles.md)
 
 ## install
 

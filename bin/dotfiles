@@ -1,0 +1,209 @@
+#!/bin/bash
+
+set -u
+
+#==================================
+# config
+#==================================
+
+PROGNAME=$(basename $0)
+VERSION="1.0"
+
+DOTPATH=~/.dotfiles
+HOSTPATH=work
+LINKFILE=work
+
+
+#==================================
+# functions
+#==================================
+
+# http://unix.stackexchange.com/questions/101080/realpath-command-not-found
+realpath()
+{
+    f=$@;
+    if [ -d "$f" ]; then
+        base="";
+        dir="$f";
+    else
+        base="/$(basename "$f")";
+        dir=$(dirname "$f");
+    fi;
+    dir=$(cd "$dir" && /bin/pwd);
+    echo "$dir$base"
+}
+
+# メイン処理
+func_addFile(){
+  if [ -f ${1} ]; then
+    filepath="$DOTPATH/$HOSTPATH/${1##$HOME/}"
+    mkdir -p $(dirname $filepath)
+    mv $1 $(dirname $filepath)
+    func_addConf $1
+    func_link $1
+  else
+    echo "ファイルを指定してください"
+  fi
+}
+
+
+func_unlink(){
+  if [ -L ${1} ]; then
+    unlink $1
+  fi
+}
+
+func_removeFile(){
+    filepath="$DOTPATH/$HOSTPATH/${1##$HOME/}"
+    if [ ! -L ${1} ]; then
+      echo "シンボリックリンクを指定してください"
+    elif [ ! -e $filepath ]; then
+      echo "ファイルがありません"
+    elif [ ! $(grep -x ${1##$HOME/} "$DOTPATH/$LINKFILE") ]; then
+      echo "管理対象パスに記載がありません"
+    fi
+    if [ -L ${1} -a -e $filepath ] && [ $(grep -x ${1##$HOME/} "$DOTPATH/$LINKFILE") ]; then
+    func_removeConf ${1}
+    func_unlink ${1}
+    mv $filepath ${1}
+    echo "完了"
+    fi
+}
+
+func_link(){
+  if [ -f $1 ]; then
+    echo 'ファイルが存在します' $1
+  fi
+  if [ -e $(dirname $1) ]; then
+    # Symlinkを作成
+    filepath="$DOTPATH/$HOSTPATH/${1##$HOME/}"
+    ln -snfv $filepath $1
+  else
+    # ディレクトリがなければ作成
+    mkdir_path=$(dirname $1)
+    mkdir -p $mkdir_path
+    ln -snfv $filepath $1
+  fi
+}
+
+func_link_all(){
+  # 設定ファイルのシンボリックリンクを作成
+  if [ -f "$DOTPATH/$LINKFILE" ]; then
+      cat "$DOTPATH/$LINKFILE" | while read line
+      do
+        func_link $HOME/$line
+      done
+  fi
+}
+
+func_unlink_all(){
+  # 設定ファイルのシンボリックリンクを削除
+  if [ -f "$DOTPATH/$LINKFILE" ]; then
+      cat "$DOTPATH/$LINKFILE" | while read line
+      do
+        func_unlink $HOME/$line
+      done
+  fi
+}
+
+func_conf(){
+  # 設定ファイルがなければ作成
+  if [ ! -f "$DOTPATH/$LINKFILE" ]; then
+    touch "$DOTPATH/$LINKFILE"
+  elif [ -f "$DOTPATH/$LINKFILE" ];then
+    sort -u "$DOTPATH/$LINKFILE" -o "$DOTPATH/$LINKFILE" | uniq
+  fi
+}
+
+func_echoConf(){
+  cat "$DOTPATH/$LINKFILE"
+}
+
+func_addConf(){
+    echo ${1##$HOME/} >> "$DOTPATH/$LINKFILE"
+    func_conf
+}
+
+func_removeConf(){
+  word=${1##$HOME/}
+  word=${word//\//\\/}
+  sed -i -e "/$word/d" $DOTPATH/$LINKFILE
+} 
+
+help(){
+  echo "dotfilesの設定を行うシェルスクリプト"
+  echo
+  echo "Usage: $PROGNAME [OPTION] FILE"
+  echo "Options:"
+  echo "  -h, --help"
+  echo "  -v, --version"
+  echo "  "
+  echo "  list"
+  echo "    :dotfilesの一覧を表示"
+  echo "  "
+  echo "  add [file or directory]"
+  echo "    :dotfilesに設定ファイルを追加"
+  echo "  "
+  echo "  remove [symbolmark]"
+  echo "    :シンボリックリンクからファイルに戻す"
+  echo "  "
+  echo "  unlink [symbolmark]"
+  echo "    :シンボリックリンクを削除"
+  echo "  "
+  echo "  deploy"
+  echo "    :dotfiles一覧のシンボリックリンクを張る"
+  echo "  "
+  echo "  reset"
+  echo "    :dotfiles一覧のシンボリックリンクを削除"
+
+  echo
+}
+
+
+#==================================
+# 判定・処理
+#==================================
+
+if [ $# -ge 1 ]; then
+  OPTION=$1
+  for OPT in $OPTION
+  do
+    case "$OPT" in
+      '-h' | '--help' )
+        help
+        exit 0
+        ;;
+      '-v' | '--version' )
+        echo $PROGNAME  version: $VERSION
+        exit 0
+        ;;
+      'list' )
+        func_echoConf
+        ;;
+      'remove' )
+        if [ $2 ]; then
+          func_removeFile $(realpath $2)
+        fi
+        ;;
+      'add' )
+        if [ $2 ]; then
+          func_addFile $(realpath $2)
+        fi
+        ;;
+      'deploy' )
+        func_link_all
+        ;;
+      'unlink' )
+        if [ $2 ]; then
+          func_unlink $(realpath $2)
+        fi
+        ;;
+      'reset' )
+        func_unlink_all
+        ;;
+    esac
+  done
+fi
+
+# help
+# exit 1
