@@ -8,9 +8,9 @@
 ## install
 
 ```bash
-cd ~/bin/
-curl -sLO "https://raw.githubusercontent.com/sika7/scripts/main/bin/repository"
-chmod x+ repository
+cd /usr/local/bin/
+curl -sLO "https://raw.githubusercontent.com/sika7/scripts/main/bin/dotfiles"
+chmod +x dotfiles
 ```
 
 ## 注意事項
